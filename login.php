@@ -62,6 +62,7 @@ $theme_dark = in_array($display['theme'],['black','gray']);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
+    <meta name="referrer" content="same-origin">
     <title><?=$var['NAME']?>/Login</title>
     <style>
     /************************
@@ -306,8 +307,8 @@ $theme_dark = in_array($display['theme'],['black','gray']);
         }
     }
     </style>
-    <link type="text/css" rel="stylesheet" href="/webGui/styles/default-cases.css">
-    <link type="image/png" rel="shortcut icon" href="/webGui/images/green-on.png">
+    <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-cases.css")?>">
+    <link type="image/png" rel="shortcut icon" href="/webGui/images/<?=$var['mdColor']?>.png">
 </head>
 
 <body>
@@ -328,7 +329,7 @@ $theme_dark = in_array($display['theme'],['black','gray']);
                 <?if (substr($mycase,-4)!='.png'):?>
                 <span class='case-<?=$mycase?>'></span>
                 <?else:?>
-                <img src="/webGui/images/<?=$mycase?>">
+                <img src='<?=autov("/webGui/images/$mycase")?>'>
                 <?endif;?>
             <?else:?>
                 <span class='case-define-r5'></span>
@@ -357,7 +358,7 @@ $theme_dark = in_array($display['theme'],['black','gray']);
                 </form>
             </div>
 
-            <p><a href="https://wiki.unraid.net/Unraid_6/Frequently_Asked_Questions#I.27ve_forgotten_my_root_password_to_my_system.2C_how_do_I_restore_access.3F" target="_blank">Password recovery</a></p>
+            <p><a href="https://wiki.unraid.net/Unraid_6/Troubleshooting#Lost_root_Password" target="_blank">Password recovery</a></p>
         </div>
     </section>
 </body>

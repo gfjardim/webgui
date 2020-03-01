@@ -28,6 +28,7 @@ $themes2 = in_array($theme,['gray','azure']);
 <meta name="viewport" content="width=1440">
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
+<meta name="referrer" content="same-origin">
 <link type="image/png" rel="shortcut icon" href="/webGui/images/<?=$var['mdColor']?>.png">
 <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-fonts.css")?>">
 <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-cases.css")?>">
@@ -89,19 +90,19 @@ var before = new Date();
 // page timer events
 var timers = {};
 
-function pauseEvents(id){
-  $.each(timers, function(i, timer) {
+function pauseEvents(id) {
+  $.each(timers, function(i,timer){
     if (!id || i==id) clearTimeout(timer);
   });
 }
-function resumeEvents(id,delay){
+function resumeEvents(id,delay) {
   var startDelay = delay||50;
-  $.each(timers, function(i, timer) {
+  $.each(timers, function(i,timer) {
     if (!id || i==id) timers[i] = setTimeout(i+'()', startDelay);
     startDelay += 50;
   });
 }
-function plus(value, label, last) {
+function plus(value,label,last) {
   return value>0 ? (value+' '+label+(value!=1?'s':'')+(last?'':', ')) : '';
 }
 function updateTime() {
@@ -223,21 +224,17 @@ var osUpgradeWarning = false;
 
 function addBannerWarning(text,warning=true,noDismiss=false) {
   var cookieText = text.replace(/[^a-z0-9]/gi,'');
-  if ( $.cookie(cookieText) == "true" ) { return false; }
-  
-  if ( warning ) {
-    text = "<i class='fa fa-warning' style='float:initial;'></i> "+text;
-  }
-  var arrayEntry = bannerWarnings.push("placeholder") - 1;
-  if ( ! noDismiss ) {
-    text = text + "<a class='bannerDismiss' onclick='dismissBannerWarning("+arrayEntry+",&quot;"+cookieText+"&quot;)'></a>";
-  }
-  bannerWarnings[arrayEntry] = text;
-  if ( ! bannerWarningInterval ) {
+  if ($.cookie(cookieText) == "true") return false;
+  if (warning) text = "<i class='fa fa-warning' style='float:initial;'></i> "+text;
+  if (!noDismiss) text = text + "<a class='bannerDismiss' onclick='dismissBannerWarning("+arrayEntry+",&quot;"+cookieText+"&quot;)'></a>";
+  if ( bannerWarnings.indexOf(text) < 0 ) {
+    var arrayEntry = bannerWarnings.push("placeholder") - 1;
+    bannerWarnings[arrayEntry] = text;
+  } else return bannerWarnings.indexOf(text);
+
+  if (!bannerWarningInterval) {
     showBannerWarnings();
-    bannerWarningInterval = setInterval(function() {
-      showBannerWarnings()
-    },10000);
+    bannerWarningInterval = setInterval(showBannerWarnings,10000);
   }
   return arrayEntry;
 }
@@ -255,33 +252,42 @@ function removeBannerWarning(entry) {
 function bannerFilterArray(array) {
   var newArray = [];
   array.filter(function(value,index,arr) {
-    if ( value ) {
-      newArray.push(value);
-    }
-  }); 
+    if (value) newArray.push(value);
+  });
   return newArray;
 }
 
 function showBannerWarnings() {
   var allWarnings = bannerFilterArray(Object.values(bannerWarnings));
-  if ( allWarnings.length == 0 ) {
+  if (allWarnings.length == 0) {
     $(".upgrade_notice").hide();
     clearInterval(bannerWarningInterval);
     bannerWarningInterval = false;
     return;
   }
-  if ( currentBannerWarning >= allWarnings.length ) {
-    currentBannerWarning = 0;
-  }
+  if (currentBannerWarning >= allWarnings.length) currentBannerWarning = 0;
   $(".upgrade_notice").show().html(allWarnings[currentBannerWarning]);
   currentBannerWarning++;
 }
 
-function showUpgrade(data,noDismiss=false) {
+function addRebootNotice(message="You must reboot for changes to take effect") {
+  addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+message,false,true);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'addRebootNotice',message:message});
+}
+
+function removeRebootNotice(message="You must reboot for changes to take effect") {
+  var bannerIndex = bannerWarnings.indexOf("<i class='fa fa-warning' style='float:initial;'></i> "+message);
+  if ( bannerIndex < 0 ) {
+    return;
+  }
+  removeBannerWarning(bannerIndex);
+  $.post("/plugins/dynamix.plugin.manager/scripts/PluginAPI.php",{action:'removeRebootNotice',message:message});
+}
+
+function showUpgrade(text,noDismiss=false) {
   if ($.cookie('os_upgrade')==null) {
-    if (osUpgradeWarning)
-      removeBannerWarning(osUpgradeWarning);
-    osUpgradeWarning = addBannerWarning(data.replace(/<a>(.*)<\/a>/,"<a href='#' onclick='hideUpgrade();openUpgrade();'>$1</a>"),false,noDismiss);
+    if (osUpgradeWarning) removeBannerWarning(osUpgradeWarning);
+    osUpgradeWarning = addBannerWarning(text.replace(/<a>(.*)<\/a>/,"<a href='#' onclick='openUpgrade()'>$1</a>").replace(/<b>(.*)<\/b>/,"<a href='#' onclick='document.rebootNow.submit()'>$1</a>"),false,noDismiss);
   }
 }
 function hideUpgrade(set) {
@@ -292,6 +298,7 @@ function hideUpgrade(set) {
     $.removeCookie('os_upgrade',{path:'/'});
 }
 function openUpgrade() {
+  hideUpgrade();
   swal({title:'Update Unraid OS',text:'Do you want to update to the new version?',type:'warning',showCancelButton:true},function(){
     openBox('/plugins/dynamix.plugin.manager/scripts/plugin&arg1=update&arg2=unRAIDServer.plg','Update Unraid OS',600,900,true);
   });
@@ -388,6 +395,21 @@ $.ajaxPrefilter(function(s, orig, xhr){
     s.data += s.data?"&":"";
     s.data += "csrf_token=<?=$var['csrf_token']?>";
   }
+});
+
+// add any pre-existing reboot notices  
+$(function() {
+<?
+  $rebootNotice = @file("/tmp/reboot_notifications") ?: array();
+  foreach ($rebootNotice as $notice):
+?>
+    var rebootMessage = "<?=trim($notice)?>";
+    if ( rebootMessage ) {
+      addBannerWarning("<i class='fa fa-warning' style='float:initial;'></i> "+rebootMessage,false,true);
+    }
+<?
+  endforeach;
+?>
 });
 </script>
 </head>
@@ -503,6 +525,7 @@ unset($pages,$page,$pgs,$pg,$icon);
 ?>
 </div></div>
 <div class="spinner fixed"></div>
+<form name="rebootNow" method="POST" action="/webGui/include/Boot.php"><input type="hidden" name="cmd" value="reboot"></form>
 <iframe id="progressFrame" name="progressFrame" frameborder="0"></iframe>
 <?
 // Build footer
@@ -606,6 +629,8 @@ $('.back_to_top').click(function(event) {
   return false;
 });
 $(function() {
+  $('div.spinner.fixed').html(unraid_logo);
+  setTimeout(function(){$('div.spinner').not('.fixed').each(function(){$(this).html(unraid_logo);});},150); // display animation if page loading takes longer than 150ms
   shortcut.add('F1',function(){HelpButton();});
 <?if ($var['regTy']=='unregistered'):?>
   $('#licensetype').addClass('orange-text');
@@ -630,9 +655,9 @@ $(function() {
 <?else:?>
 <?$readme = @file_get_contents("$docroot/plugins/unRAIDServer/README.md",false,null,0,20);?>
 <?if (strpos($readme,'REBOOT REQUIRED')!==false):?>
-  showUpgrade('<b>Reboot required</b> to apply Unraid OS update',true);
+  showUpgrade('<b>Reboot Now</b> to upgrade Unraid OS',true);
 <?elseif (strpos($readme,'DOWNGRADE')!==false):?>
-  showUpgrade('<b>Reboot required</b> to downgrade Unraid OS',true);
+  showUpgrade('<b>Reboot Now</b> to downgrade Unraid OS',true);
 <?elseif ($version = plugin_update_available('unRAIDServer',true)):?>
   showUpgrade('Unraid OS v<?=$version?> is available. <a>Update Now</a>');
 <?endif;?>
@@ -691,7 +716,6 @@ $(function() {
     });
   }
   $('form').append($('<input>').attr({type:'hidden', name:'csrf_token', value:'<?=$var['csrf_token']?>'}));
-  setTimeout(function(){$('div.spinner').each(function(){$(this).html(unraid_logo);});},150); // display animation if page loading takes longer than 150ms
   watchdog.start();
 });
 </script>

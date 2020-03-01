@@ -36,6 +36,7 @@ function dmidecode($key,$n,$all=true) {
 <head>
 <meta name="robots" content="noindex, nofollow">
 <meta http-equiv="Content-Security-Policy" content="block-all-mixed-content">
+<meta name="referrer" content="same-origin">
 <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-fonts.css")?>">
 <link type="text/css" rel="stylesheet" href="<?autov("/webGui/styles/default-popup.css")?>">
 <style>
@@ -228,7 +229,7 @@ foreach ($sPorts as $port) {
 <div style="margin-top:24px;margin-bottom:12px"><span class="key"></span>
 <input type="button" value="Close" onclick="top.Shadowbox.close()">
 <?if ($_GET['more']):?>
-<a href="<?=htmlspecialchars($_GET['more'])?>" class="button" style="text-decoration:none" target="_parent">More</a>
+<a href="<?=htmlspecialchars($_GET['more'])?>" class="button" style="display:inline-block;padding:1px" target="_parent">More</a>
 <?endif;?>
 </div></div>
 </body>
